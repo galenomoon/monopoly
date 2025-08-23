@@ -1,113 +1,460 @@
-import Image from 'next/image'
+"use client";
+import { useState, useEffect } from "react";
+import Header from "@/components/Header";
+import { RxCaretRight } from "react-icons/rx";
+
+import { RiBarcodeFill, RiHandCoinLine } from "react-icons/ri";
+import { FaRegGrinStars, FaSkull } from "react-icons/fa";
+import { LuDices } from "react-icons/lu";
+import { GiBurningSkull } from "react-icons/gi";
+import { IoClose } from "react-icons/io5";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function Home() {
+  // Valores iniciais
+  const initialValues = {
+    debit: 1500,
+    credit: 1000,
+    creditLimit: 1000,
+    playerName: "Jogador", // Nome inicial
+  };
+
+  const [hideValues, setHideValues] = useState(false);
+  const [debitValue, setDebitValue] = useState(initialValues.debit);
+  const [creditValue, setCreditValue] = useState(initialValues.credit);
+  const [creditLimit, setCreditLimit] = useState(initialValues.creditLimit);
+  const [playerName, setPlayerName] = useState(initialValues.playerName); // Estado para nome do jogador
+  const [isOpen, setIsOpen] = useState(false);
+  const [modalType, setModalType] = useState(""); // "pay" ou "receive"
+  const [modalValue, setModalValue] = useState("");
+  const [isCreditLimitModalOpen, setIsCreditLimitModalOpen] = useState(false);
+  const [newCreditLimit, setNewCreditLimit] = useState("");
+  const [isInitialized, setIsInitialized] = useState(false); // Flag para controlar quando salvar
+  const [isLoading, setIsLoading] = useState(true); // Estado de loading
+  const [isEditingName, setIsEditingName] = useState(false); // Estado para edição do nome
+  const [tempPlayerName, setTempPlayerName] = useState(""); // Nome temporário durante edição
+
+  // Carregar valores do localStorage ao inicializar
+  useEffect(() => {
+    const savedDebit = localStorage.getItem("monopoly_debit");
+    const savedCredit = localStorage.getItem("monopoly_credit");
+    const savedCreditLimit = localStorage.getItem("monopoly_credit_limit");
+    const savedPlayerName = localStorage.getItem("monopoly_player_name");
+
+    // Se existem valores salvos, usa eles. Se não, usa os valores iniciais
+    if (savedDebit) {
+      console.log("Debito salvo");
+      setDebitValue(parseFloat(savedDebit));
+    } else {
+      setDebitValue(initialValues.debit);
+    }
+    
+    if (savedCredit) {
+      setCreditValue(parseFloat(savedCredit));
+    } else {
+      setCreditValue(initialValues.credit);
+    }
+    
+    if (savedCreditLimit) {
+      setCreditLimit(parseFloat(savedCreditLimit));
+    } else {
+      setCreditLimit(initialValues.creditLimit);
+    }
+
+    if (savedPlayerName) {
+      setPlayerName(savedPlayerName);
+    } else {
+      setPlayerName(initialValues.playerName);
+    }
+
+    // Marca como inicializado após carregar os valores
+    setIsInitialized(true);
+    
+    // Simula um pequeno delay para o loading ficar visível
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
+  }, []); // Executa apenas uma vez ao montar o componente
+
+  // Salvar valores no localStorage sempre que qualquer valor mudar (após inicialização)
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem("monopoly_debit", debitValue.toString());
+      localStorage.setItem("monopoly_credit", creditValue.toString());
+      localStorage.setItem("monopoly_credit_limit", creditLimit.toString());
+      localStorage.setItem("monopoly_player_name", playerName);
+    }
+  }, [debitValue, creditValue, creditLimit, playerName, isInitialized]); // Executa quando qualquer um dos valores mudar
+
+  const handleReload = () => {
+    const confirm = window.confirm("Deseja reiniciar o jogo?");
+    if (confirm) {
+      setDebitValue(initialValues.debit);
+      setCreditValue(initialValues.credit);
+      setCreditLimit(initialValues.creditLimit);
+      setPlayerName(initialValues.playerName);
+
+      // Limpar localStorage
+      localStorage.removeItem("monopoly_debit");
+      localStorage.removeItem("monopoly_credit");
+      localStorage.removeItem("monopoly_credit_limit");
+      localStorage.removeItem("monopoly_player_name");
+
+      toast.success("Jogo reiniciado com sucesso!");
+    }
+  };
+
+  const startEditingName = () => {
+    setTempPlayerName(playerName);
+    setIsEditingName(true);
+  };
+
+  const savePlayerName = () => {
+    if (tempPlayerName.trim()) {
+      setPlayerName(tempPlayerName.trim());
+      setIsEditingName(false);
+      toast.success("Nome atualizado com sucesso!");
+    } else {
+      toast.error("O nome não pode estar vazio!");
+    }
+  };
+
+  const cancelEditingName = () => {
+    setTempPlayerName("");
+    setIsEditingName(false);
+  };
+
+  const openModal = (type) => {
+    setModalType(type);
+    setModalValue("");
+    setIsOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsOpen(false);
+    setModalType("");
+    setModalValue("");
+  };
+
+  const handleModalSubmit = () => {
+    const value = parseFloat(modalValue);
+
+    if (isNaN(value) || value <= 0) {
+      toast.error("Por favor, insira um valor válido!");
+      return;
+    }
+
+    if (modalType === "pay") {
+      handlePayment(value);
+    } else if (modalType === "receive") {
+      handleReceive(value);
+    }
+
+    closeModal();
+  };
+
+  const handlePayment = (value) => {
+    if (debitValue >= value) {
+      setDebitValue((prev) => prev - value);
+      toast.success(
+        `Pagamento de R$ ${value.toFixed(2)} realizado com sucesso!`
+      );
+    } else {
+      const remainingValue = value - debitValue;
+      if (creditValue >= remainingValue) {
+        setDebitValue(0);
+        setCreditValue((prev) => prev - remainingValue);
+        toast.success(
+          `Pagamento de R$ ${value.toFixed(
+            2
+          )} realizado! R$ ${debitValue.toFixed(
+            2
+          )} da conta e R$ ${remainingValue.toFixed(2)} do cartão.`
+        );
+      } else {
+        toast.error("Saldo insuficiente na conta e no cartão de crédito!");
+      }
+    }
+  };
+
+  const handleReceive = (value) => {
+    setDebitValue((prev) => prev + value);
+    toast.success(`Recebimento de R$ ${value.toFixed(2)} adicionado ao saldo!`);
+  };
+
+  const handleAdd200 = () => {
+    setDebitValue((prev) => prev + 200);
+    toast.success("R$ 200,00 adicionados ao saldo!");
+  };
+
+  const openCreditLimitModal = () => {
+    setNewCreditLimit(creditLimit.toString());
+    setIsCreditLimitModalOpen(true);
+  };
+
+  const closeCreditLimitModal = () => {
+    setIsCreditLimitModalOpen(false);
+    setNewCreditLimit("");
+  };
+
+  const handleCreditLimitSubmit = () => {
+    const value = parseFloat(newCreditLimit);
+
+    if (isNaN(value) || value < 0) {
+      toast.error("Por favor, insira um valor válido!");
+      return;
+    }
+
+    setCreditLimit(value);
+    closeCreditLimitModal();
+    toast.success(`Limite do cartão atualizado para R$ ${value.toFixed(2)}!`);
+  };
+
+  const handleRollDice = () => {
+    const dice1 = Math.floor(Math.random() * 6) + 1;
+    const dice2 = Math.floor(Math.random() * 6) + 1;
+    const total = dice1 + dice2;
+
+    toast.success(` Você rolou ${dice1} e ${dice2}! Total: ${total}`, {
+      duration: 4000,
+      icon: "🎲",
+    });
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <main className="flex min-h-screen flex-col font-outfit text-black">
+      <Toaster position="top-center" />
+      
+      {/* Loading Screen */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-red-600 flex items-center justify-center z-50">
+          <div className="text-center text-white">
+            <div className="mb-6">
+              <div className="w-24 h-24 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+            </div>
+            <h1 className="text-3xl font-bold mb-2">Segura ai meu amigo</h1>
+            <p className="text-xl opacity-90">Carregando...</p>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+      {/* Conteúdo Principal */}
+      {!isLoading && (
+        <>
+          <Header
+            playerName={playerName}
+            hideValues={hideValues}
+            setHideValues={setHideValues}
+            onReload={handleReload}
+            onStartEditingName={startEditingName}
+            isEditingName={isEditingName}
+            tempPlayerName={tempPlayerName}
+            setTempPlayerName={setTempPlayerName}
+            onSavePlayerName={savePlayerName}
+            onCancelEditingName={cancelEditingName}
+          />
+          <section className="flex flex-col gap-6 w-full flex-1 bg-white p-6">
+            <ResumeAccount
+              title="Saldo em conta"
+              value={debitValue}
+              hideValue={hideValues}
+            />
+            <ActionButtons
+              onPay={() => openModal("pay")}
+              onReceive={() => openModal("receive")}
+              onAdd200={handleAdd200}
+              onRollDice={handleRollDice}
+            />
+            <ResumeAccount
+              title="Cheque especial"
+              value={creditLimit - creditValue}
+              isCredit
+              hideValue={hideValues}
+              creditLimit={creditValue}
+              onCreditLimitClick={openCreditLimitModal}
+              initialCreditLimit={initialValues.creditLimit}
+            />
+          </section>
+        </>
+      )}
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+      {/* Modal para Pagar/Receber */}
+      {isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-semibold">
+                {modalType === "pay" ? "Pagar" : "Receber"}
+              </h2>
+              <button
+                onClick={closeModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <IoClose size={24} />
+              </button>
+            </div>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Valor (R$)
+              </label>
+              <input
+                type="number"
+                value={modalValue}
+                onChange={(e) => setModalValue(e.target.value)}
+                placeholder="0,00"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                step="0.01"
+                min="0"
+              />
+            </div>
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore the Next.js 13 playground.
-          </p>
-        </a>
+            <button
+              onClick={handleModalSubmit}
+              className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold text-lg hover:bg-red-700 transition-colors"
+            >
+              {modalType === "pay" ? "Pagar" : "Receber"}
+            </button>
+          </div>
+        </div>
+      )}
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+      {/* Modal para Limite do Cartão */}
+      {isCreditLimitModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-semibold">Definir Limite</h2>
+              <button
+                onClick={closeCreditLimitModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <IoClose size={24} />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Limite do Cartão (R$)
+              </label>
+              <input
+                type="number"
+                value={newCreditLimit}
+                onChange={(e) => setNewCreditLimit(e.target.value)}
+                placeholder="0,00"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                step="0.01"
+                min="0"
+              />
+            </div>
+
+            <button
+              onClick={handleCreditLimitSubmit}
+              className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold text-lg hover:bg-red-700 transition-colors"
+            >
+              Atualizar Limite
+            </button>
+          </div>
+        </div>
+      )}
     </main>
-  )
+  );
 }
+
+export const ResumeAccount = ({
+  title,
+  value,
+  isCredit,
+  hideValue,
+  creditLimit,
+  onCreditLimitClick,
+  initialCreditLimit,
+}) => {
+  const isUsingCredit = value !== 0 && isCredit;
+  return (
+    <section className={`${isCredit ? "pt-4 border-t border-gray-200" : ""}`}>
+      <div className="w-full flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <h1 className={`text-xl ${isUsingCredit ? "text-red-500" : ""}`}>
+            {title}
+          </h1>
+          {!isCredit ? null : isUsingCredit ? (
+            <GiBurningSkull size={24} className="text-red-500 animate-pulse" />
+          ) : (
+            <FaSkull size={16} className="text-black-500" />
+          )}
+        </div>
+        <RxCaretRight size={24} />
+      </div>
+      <div>
+        {isCredit ? (
+          <h2 className="opacity-60 mt-2 font-light">Você deve</h2>
+        ) : (
+          ""
+        )}
+        <h2 className="whitespace-nowrap font-semibold text-2xl">
+          R${" "}
+          {hideValue
+            ? "****"
+            : value.toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+        </h2>
+      </div>
+      {!isCredit ? null : (
+        <button
+          onClick={onCreditLimitClick}
+          className="opacity-60 mt-4 font-light hover:opacity-80 transition-opacity cursor-pointer"
+        >
+          Limite disponível de R${" "}
+          {creditLimit.toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </button>
+      )}
+    </section>
+  );
+};
+
+export const ActionButtons = ({ onPay, onReceive, onAdd200, onRollDice }) => {
+  const actions = [
+    {
+      title: "Pagar",
+      icon: <RiBarcodeFill size={24} className="flex-shrink-0" />,
+      onClick: onPay,
+    },
+    {
+      title: "Receber",
+      icon: <RiHandCoinLine size={24} className="flex-shrink-0" />,
+      onClick: onReceive,
+    },
+    {
+      title: "+200",
+      icon: <FaRegGrinStars size={24} className="flex-shrink-0" />,
+      onClick: onAdd200,
+    },
+    {
+      title: "Rode Dados",
+      icon: <LuDices size={24} className="flex-shrink-0" />,
+      onClick: onRollDice,
+    },
+  ];
+
+  return (
+    <section className="flex gap-6">
+      {actions.map((action) => (
+        <div key={action.title} className="flex flex-col gap-2 items-center">
+          <button
+            onClick={action.onClick}
+            className="w-[60px] h-[60px] flex justify-center items-center bg-gray-200 p-4 rounded-full hover:bg-gray-300 transition-colors"
+          >
+            {action.icon}
+          </button>
+          <h1 className="text-sm">{action.title}</h1>
+        </div>
+      ))}
+    </section>
+  );
+};
