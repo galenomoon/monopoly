@@ -3,7 +3,6 @@ import { IoReload } from "react-icons/io5";
 import { IoClose, IoCheckmark } from "react-icons/io5";
 import avatars from "@/utils/characters";
 import Image from "next/image";
-import { useState } from "react";
 
 export default function Header({
   playerName,
@@ -16,11 +15,12 @@ export default function Header({
   setTempPlayerName,
   onSavePlayerName,
   onCancelEditingName,
+  currentAvatar,
+  onAvatarChange,
 }) {
-  const [currentAvatar, setCurrentAvatar] = useState(0);
-
   const handleChangeAvatar = () => {
-    setCurrentAvatar((prev) => (prev + 1) % avatars.length);
+    const newAvatar = (currentAvatar + 1) % avatars.length;
+    onAvatarChange(newAvatar);
   };
 
   return (
@@ -76,7 +76,7 @@ export default function Header({
             </button>
           </div>
         ) : (
-          <h1 
+          <h1
             onClick={onStartEditingName}
             className="cursor-pointer transition-opacity select-none"
           >

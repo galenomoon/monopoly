@@ -5,6 +5,7 @@ import { RxCaretRight } from "react-icons/rx";
 
 import { RiBarcodeFill, RiHandCoinLine } from "react-icons/ri";
 import { FaRegGrinStars, FaSkull } from "react-icons/fa";
+import { HiOutlineBolt } from "react-icons/hi2";
 import { LuDices } from "react-icons/lu";
 import { GiBurningSkull } from "react-icons/gi";
 import { IoClose } from "react-icons/io5";
@@ -17,6 +18,7 @@ export default function Home() {
     credit: 1000,
     creditLimit: 1000,
     playerName: "Jogador", // Nome inicial
+    avatar: 0, // Avatar inicial
   };
 
   const [hideValues, setHideValues] = useState(false);
@@ -24,6 +26,7 @@ export default function Home() {
   const [creditValue, setCreditValue] = useState(initialValues.credit);
   const [creditLimit, setCreditLimit] = useState(initialValues.creditLimit);
   const [playerName, setPlayerName] = useState(initialValues.playerName); // Estado para nome do jogador
+  const [currentAvatar, setCurrentAvatar] = useState(initialValues.avatar); // Estado para avatar
   const [isOpen, setIsOpen] = useState(false);
   const [modalType, setModalType] = useState(""); // "pay" ou "receive"
   const [modalValue, setModalValue] = useState("");
@@ -40,6 +43,7 @@ export default function Home() {
     const savedCredit = localStorage.getItem("monopoly_credit");
     const savedCreditLimit = localStorage.getItem("monopoly_credit_limit");
     const savedPlayerName = localStorage.getItem("monopoly_player_name");
+    const savedAvatar = localStorage.getItem("monopoly_avatar");
 
     // Se existem valores salvos, usa eles. Se não, usa os valores iniciais
     if (savedDebit) {
@@ -48,13 +52,13 @@ export default function Home() {
     } else {
       setDebitValue(initialValues.debit);
     }
-    
+
     if (savedCredit) {
       setCreditValue(parseFloat(savedCredit));
     } else {
       setCreditValue(initialValues.credit);
     }
-    
+
     if (savedCreditLimit) {
       setCreditLimit(parseFloat(savedCreditLimit));
     } else {
@@ -67,9 +71,15 @@ export default function Home() {
       setPlayerName(initialValues.playerName);
     }
 
+    if (savedAvatar) {
+      setCurrentAvatar(parseInt(savedAvatar, 10));
+    } else {
+      setCurrentAvatar(initialValues.avatar);
+    }
+
     // Marca como inicializado após carregar os valores
     setIsInitialized(true);
-    
+
     // Simula um pequeno delay para o loading ficar visível
     setTimeout(() => {
       setIsLoading(false);
@@ -83,8 +93,16 @@ export default function Home() {
       localStorage.setItem("monopoly_credit", creditValue.toString());
       localStorage.setItem("monopoly_credit_limit", creditLimit.toString());
       localStorage.setItem("monopoly_player_name", playerName);
+      localStorage.setItem("monopoly_avatar", currentAvatar.toString());
     }
-  }, [debitValue, creditValue, creditLimit, playerName, isInitialized]); // Executa quando qualquer um dos valores mudar
+  }, [
+    debitValue,
+    creditValue,
+    creditLimit,
+    playerName,
+    currentAvatar,
+    isInitialized,
+  ]); // Executa quando qualquer um dos valores mudar
 
   const handleReload = () => {
     const confirm = window.confirm("Deseja reiniciar o jogo?");
@@ -93,12 +111,14 @@ export default function Home() {
       setCreditValue(initialValues.credit);
       setCreditLimit(initialValues.creditLimit);
       setPlayerName(initialValues.playerName);
+      setCurrentAvatar(initialValues.avatar);
 
       // Limpar localStorage
       localStorage.removeItem("monopoly_debit");
       localStorage.removeItem("monopoly_credit");
       localStorage.removeItem("monopoly_credit_limit");
       localStorage.removeItem("monopoly_player_name");
+      localStorage.removeItem("monopoly_avatar");
 
       toast.success("Jogo reiniciado com sucesso!");
     }
@@ -222,24 +242,22 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col font-outfit text-black">
+    <main className="flex h-[90dvh] flex-col relative font-outfit text-black">
       <Toaster position="top-center" />
-      
-      {/* Loading Screen */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-red-600 flex items-center justify-center z-50">
-          <div className="text-center text-white">
-            <div className="mb-6">
-              <div className="w-24 h-24 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
-            </div>
-            <h1 className="text-3xl font-bold mb-2">Segura ai meu amigo</h1>
-            <p className="text-xl opacity-90">Carregando...</p>
-          </div>
-        </div>
-      )}
+      <section className="flex justify-center items-center gap-4 fixed bottom-12 left-0 right-0 px-6 py-4">
+        <button
+          onClick={handleRollDice}
+          className="flex gap-2 bg-red-500 w-full h-14 rounded-xl text-white items-center justify-center"
+        >
+          <LuDices size={24} />
+          <h1 className="text-xl font-semibold">Rode Dados</h1>
+        </button>
+      </section>
 
-      {/* Conteúdo Principal */}
-      {!isLoading && (
+      {/* Loading Screen */}
+      {isLoading ? (
+        <LoadingScreen />
+      ) : (
         <>
           <Header
             playerName={playerName}
@@ -252,8 +270,10 @@ export default function Home() {
             setTempPlayerName={setTempPlayerName}
             onSavePlayerName={savePlayerName}
             onCancelEditingName={cancelEditingName}
+            currentAvatar={currentAvatar}
+            onAvatarChange={setCurrentAvatar}
           />
-          <section className="flex flex-col gap-6 w-full flex-1 bg-white p-6">
+          <section className="flex flex-col gap-6 w-full h-fit p-6">
             <ResumeAccount
               title="Saldo em conta"
               value={debitValue}
@@ -300,6 +320,8 @@ export default function Home() {
               </label>
               <input
                 type="number"
+                inputMode="numeric" // ou "numeric"
+                pattern="[0-9]*"
                 value={modalValue}
                 onChange={(e) => setModalValue(e.target.value)}
                 placeholder="0,00"
@@ -361,6 +383,20 @@ export default function Home() {
   );
 }
 
+export const LoadingScreen = () => {
+  return (
+    <div className="fixed inset-0 bg-red-600 flex items-center justify-center z-50">
+      <div className="text-center text-white">
+        <div className="mb-6">
+          <div className="w-24 h-24 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+        <h1 className="text-3xl font-bold mb-2">Segura ai meu amigo</h1>
+        <p className="text-xl opacity-90">Carregando...</p>
+      </div>
+    </div>
+  );
+};
+
 export const ResumeAccount = ({
   title,
   value,
@@ -418,16 +454,21 @@ export const ResumeAccount = ({
   );
 };
 
-export const ActionButtons = ({ onPay, onReceive, onAdd200, onRollDice }) => {
+export const ActionButtons = ({
+  onPay,
+  onReceive,
+  onAdd200,
+  onRollDice
+}) => {
   const actions = [
     {
       title: "Pagar",
-      icon: <RiBarcodeFill size={24} className="flex-shrink-0" />,
+      icon: <RiBarcodeFill size={24} className="flex-shrink-0 text-red-700" />,
       onClick: onPay,
     },
     {
       title: "Receber",
-      icon: <RiHandCoinLine size={24} className="flex-shrink-0" />,
+      icon: <RiHandCoinLine size={24} className="flex-shrink-0 text-green-700" />,
       onClick: onReceive,
     },
     {
