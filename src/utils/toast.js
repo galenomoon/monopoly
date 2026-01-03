@@ -11,7 +11,7 @@ import { CustomToast } from "@/components/CustomToast";
  * @param {string} options.type - Tipo do toast: 'gain', 'loss', 'error', 'default' (opcional)
  */
 export const showToast = (message, options = {}) => {
-  const { title, avatar, duration = 4000, type = "default" } = options;
+  const { title, avatar, duration = 3000, type = "default" } = options;
 
   return toast.custom(
     (t) => (
